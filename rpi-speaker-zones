@@ -1,0 +1,81 @@
+#!/usr/bin/env python2
+
+import os, os.path
+from flask import Flask, redirect
+
+app = Flask(__name__)
+
+stateFile = os.path.expanduser("~/.rpi-speaker-zones-state")
+
+nZones = 2
+
+@app.route("/")
+def hello():
+    return doc.replace('{state}', readState())
+
+@app.route("/toggle/0", methods=["POST"])
+def postToggle0():
+    toggle(0)
+    return goHome()
+
+@app.route("/toggle/1", methods=["POST"])
+def postToggle1():
+    toggle(1)
+    return goHome()
+
+def goHome():
+    return redirect('/', code=302)
+
+def toggle(n):
+    state = list(readState())
+    state[n] = '0' if state[n] == '1' else '1'
+    writeState(''.join(state))
+
+def readState():
+    os.system("touch " + stateFile)
+    out = open(stateFile).read()
+    return (out + ('0' * nZones))[:nZones]
+
+def writeState(state):
+    open(stateFile, 'w').write(state)
+
+
+doc = """
+<!doctype html>
+<html>
+  <head>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+            integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+            crossorigin="anonymous"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .zone {
+      width: 100px;
+        height: 30px;
+    }
+  </style>
+  <script type="text/javascript">
+    var state = "{state}";
+    $(function() {
+      for (var i=0; i<state.length; i++) {
+        $("#zone" + i).css("border-style", state[i] == '1' ? "inset" : "outset");
+      }
+    });
+  </script>
+  </head>
+  <body>
+    <form action="/toggle/0" method="POST">
+      <button id="zone0" class="zone">Zone 0</button>
+    </form>
+    <form action="/toggle/1" method="POST">
+      <button id="zone1" class="zone">Zone 1</button>
+    </form>
+  </body>
+</html>
+"""
+
+
+if __name__ == "__main__":
+    app.run()
