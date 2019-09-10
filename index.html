@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <script
+			  src="https://code.jquery.com/jquery-3.4.1.min.js"
+			  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+			  crossorigin="anonymous"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .active {
+      background-color: pink;
+    }
+  </style>
+  <script type="text/javascript">
+    var state = "{state}";
+    $(function() {
+      for (var i=0; i<state.length; i++) {
+        $("#zone" + i).css("border-style", state[i] == '1' ? "inset" : "outset");
+      }
+    });
+  </script>
+  </head>
+  <body>
+    <form action="/toggle/0" method="POST">
+      <button id="zone0" class="zone">Zone1</button>
+    </form>
+    <form action="/toggle/1" method="POST">
+      <button id="zone1" class="zone">Zone2</button>
+    </form>
+  </body>
+</html>
+
