@@ -3,6 +3,8 @@
 import os, os.path
 from flask import Flask, redirect
 import RPi.GPIO as GPIO
+import subprocess
+import re
 
 app = Flask(__name__)
 
@@ -18,6 +20,7 @@ def hello():
     return doc % {
         'zone0': 'active' if state[0] == '1' else '',
         'zone1': 'active' if state[1] == '1' else '',
+        'vol': vol("0%+"),
     }
 
 @app.route("/toggle/0", methods=["POST"])
@@ -29,6 +32,21 @@ def postToggle0():
 def postToggle1():
     toggle(1)
     return goHome()
+
+@app.route("/vol/up", methods=["POST"])
+def volUp():
+    return vol("5%+")
+
+@app.route("/vol/down", methods=["POST"])
+def volDown():
+    return vol("5%-")
+
+def vol(act):
+    cmd = ("amixer -D hw:0 set Digital " + act).split()
+    (voldata, _) = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
+    left = voldata.strip().splitlines()[-2]
+    match = re.match('.*\[(\d+%)\]', left)
+    return match.groups()[0]
 
 def goHome():
     return redirect('/', code=302)
@@ -53,11 +71,26 @@ doc = """
 <html>
   <head>
   <link href="data:image/x-icon;base64,AAABAAEAEBAAAAAAAABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAEAAAAAAAAAAAAAAAEAAAAAAAC/v78AAAAAALCwsABJSUkAOjo6AJKSkgCDg4MAdHR0AA0NDQBWVlYAR0dHAPf39wA4ODgAkJCQAHJycgALCwsAY2NjAFRUVACsrKwARUVFAJ2dnQA2NjYAJycnAObm5gB/f38AGBgYAAkJCQBhYWEAubm5AKqqqgCbm5sA5OTkANXV1QAWFhYAxsbGAAcHBwBfX18At7e3AFBQUACoqKgAQUFBAJmZmQDx8fEAMjIyAOLi4gDT09MAxMTEAAUFBQBdXV0A/v7+AJeXlwDv7+8AiIiIACEhIQDg4OAA0dHRABISEgDCwsIAAwMDAFtbWwCzs7MApKSkAPz8/ACVlZUA7e3tAM/PzwAQEBAAaGhoAMDAwACioqIAOzs7AJOTkwCEhIQAHR0dANzc3AB1dXUAzc3NAGZmZgBXV1cAr6+vAEhISACgoKAA+Pj4ADk5OQCRkZEAKioqABsbGwDa2toAc3NzAAwMDABkZGQAvLy8AFVVVQCenp4ANzc3APb29gDn5+cAKCgoANjY2ACrq6sAREREAJycnACNjY0AJiYmABcXFwBvb28ACAgIALi4uACLi4sA1NTUAG1tbQAGBgYAxcXFAF5eXgC2trYAp6enAEBAQACYmJgAiYmJAMPDwwAEBAQAXFxcALS0tAD9/f0ALy8vAIeHhwDf398AaWlpAFpaWgCysrIA+/v7AJSUlACFhYUADw8PAM7OzgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBASAGQwdIhDItAQEBAQEBAWyALndlKRxgPGUBAQEBAX8Nen9dhkFNCkgsJwEBAXZmPwULgnt7NAgMXGBRAUoJW1Q+ez4+KlAPeHxYOWJsY2lfPj5+ZnErI3gIUyASeTdHglIfA1kaXnQveAQ0gUtbAD4xEgg4GRFOam9nEEQGegB7gg2FaExfJGpvFjBrfYZ1X3tFFQwzXQMjOgQOT4MfWkBKeQxcO2QILw9TJXNtURRVQjpqL286D2oMRjliAUcXJlZqby94eGpTYTlRAQEBMjYbYTUhSVUMKC4eAQEBAQFzhiIYEwpugXA9AQEBAQEBAVcSgXIlAh1tAQEBAfAPAADgBwAAwAMAAIABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIABAADAAwAA4AcAAPAPAAA=" rel="icon" type="image/x-icon" />
-    <meta name="viewport" content="width=device-width, initial-scale=3, maximum-scale=3, minimum-scale=3, user-scalable=no, minimal-ui">
+    <meta name="viewport" content="initial-scale=3, maximum-scale=3, minimum-scale=3, user-scalable=no, minimal-ui">
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+        crossorigin="anonymous"></script>
+    <script>
+        function vol(act) {
+            $.post("/vol/" + act, "", function(data) {
+                $('#vol').html(data);
+            });
+        }
+        $(function() {
+            $('#volup').click(function() { vol("up") });
+            $('#voldown').click(function() { vol("down") });
+        });
+    </script>
   <style>
     body {
       font-family: sans-serif;
     }
+    button { touch-action: manipulation; }
     .zone {
       width: 100px;
       height: 30px;
@@ -71,16 +104,23 @@ doc = """
     }
     form {
         margin-top: 5px;
-        }
+    }
   </style>
   </head>
   <body>
-    <form action="/toggle/0" method="POST">
-      <button id="zone0" class="zone %(zone0)s">Zone 0</button>
-    </form>
-    <form action="/toggle/1" method="POST">
-      <button id="zone1" class="zone %(zone1)s">Zone 1</button>
-    </form>
+    <div style="text-align: center;">
+        <form action="/toggle/0" method="POST">
+          <button id="zone0" class="zone %(zone0)s">Zone 0</button>
+        </form>
+        <form action="/toggle/1" method="POST">
+          <button id="zone1" class="zone %(zone1)s">Zone 1</button>
+        </form>
+        <p>
+            Volume: <span id="vol">%(vol)s</span> <br />
+            <button id="volup">&nbsp;+&nbsp;</button>
+            <button id="voldown">&nbsp;-&nbsp;</button>
+        </p>
+    </div>
   </body>
 </html>
 """
