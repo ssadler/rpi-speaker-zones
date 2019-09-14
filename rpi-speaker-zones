@@ -42,7 +42,7 @@ def volDown():
     return vol("5%-")
 
 def vol(act):
-    cmd = ("amixer -D hw:0 set Digital " + act).split()
+    cmd = ("amixer -M -D hw:0 set Digital " + act).split()
     (voldata, _) = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
     left = voldata.strip().splitlines()[-2]
     match = re.match('.*\[(\d+%)\]', left)
@@ -117,8 +117,8 @@ doc = """
         </form>
         <p>
             Volume: <span id="vol">%(vol)s</span> <br />
-            <button id="volup">&nbsp;+&nbsp;</button>
             <button id="voldown">&nbsp;-&nbsp;</button>
+            <button id="volup">&nbsp;+&nbsp;</button>
         </p>
     </div>
   </body>
@@ -129,8 +129,9 @@ first = True
 
 def sync():
     global first
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
+    if first:
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
     for (gpio, s) in zip(zone_gpio, readState()):
         if first:
             GPIO.setup(gpio, GPIO.OUT)
